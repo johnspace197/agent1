@@ -8,10 +8,6 @@
         ]
       },
       "ddg-search": {
-        "command": "uvx",
-        "args": ["duckduckgo-mcp-server"]
-      },
-      "duckduckgo-search": {
         "command": "npx",
         "args": [
           "-y",

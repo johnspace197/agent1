@@ -27,7 +27,7 @@ class SearchResult:
 class Agent:
     def __init__(self, mcp_client: MCPClientManager):
         self.mcp_client = mcp_client
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.0-flash"
         self.client = None
         self.chat = None
         self.search_history: List[SearchResult] = []
