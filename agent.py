@@ -197,7 +197,7 @@ Guidelines:
                 
                 return response.text
 
-            parts_response = []
+            function_responses = []
             for fc in function_calls:
                 tool_name = fc.name
                 args = fc.args
@@ -222,16 +222,23 @@ Guidelines:
                     
                 except Exception as e:
                     formatted_result = f"Error executing tool {tool_name}: {str(e)}"
+                    print(f"[ERROR] Tool execution error: {e}")
                 
-                parts_response.append(
-                    types.Part.from_function_response(
+                # FunctionResponse 생성
+                function_responses.append(
+                    types.FunctionResponse(
                         name=tool_name,
                         response={"result": formatted_result}
                     )
                 )
 
+            # FunctionResponse를 Content로 변환하여 전송
+            function_response_content = types.Content(
+                parts=[types.Part(function_response=fr) for fr in function_responses]
+            )
+            
             # google-genai SDK의 send_message는 동기 메서드
-            response = self.chat.send_message(parts_response)
+            response = self.chat.send_message(function_response_content)
             current_turn += 1
 
         if search_results_this_query:
