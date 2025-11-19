@@ -1,8 +1,11 @@
 {
     "mcpServers": {
       "Context7": {
-        "url": "https://mcp.context7.com/mcp",
-        "headers": {}
+        "command": "npx",
+        "args": [
+            "-y",
+            "@upstash/context7-mcp"
+        ]
       },
       "duckduckgo-search": {
           "command": "npx",

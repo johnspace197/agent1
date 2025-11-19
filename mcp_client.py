@@ -89,27 +89,44 @@ class MCPClientManager:
             return False
 
     async def _connect_context7(self):
-        """Context7 MCP 서버 연결 (SSE)"""
+        """Context7 MCP 서버 연결 (Stdio 또는 SSE)"""
         try:
             print("[INFO] Attempting to connect to Context7 MCP server...")
             
             # config에서 설정 읽기
             c7_config = self.mcp_config.get("mcpServers", {}).get("Context7", {})
-            url = c7_config.get("url", "https://mcp.context7.com/mcp")
-            headers = c7_config.get("headers", {})
             
-            # SSE 클라이언트 연결 (타임아웃 60초로 증가)
-            # headers가 비어있으면 None으로 전달
-            sse_kwargs = {"url": url}
-            if headers:
-                sse_kwargs["headers"] = headers
-            
-            c7_transport = await asyncio.wait_for(
-                self.exit_stack.enter_async_context(
-                    sse_client(**sse_kwargs)
-                ),
-                timeout=60.0
-            )
+            # command가 있으면 stdio 방식, url이 있으면 SSE 방식
+            if "command" in c7_config:
+                # Stdio 방식
+                command = c7_config.get("command", "npx")
+                args = c7_config.get("args", [])
+                
+                c7_params = StdioServerParameters(
+                    command=command,
+                    args=args,
+                    env=os.environ.copy()
+                )
+                
+                c7_transport = await asyncio.wait_for(
+                    self.exit_stack.enter_async_context(stdio_client(c7_params)),
+                    timeout=60.0
+                )
+            else:
+                # SSE 방식 (기존 방식, 하위 호환성)
+                url = c7_config.get("url", "https://mcp.context7.com/mcp")
+                headers = c7_config.get("headers", {})
+                
+                sse_kwargs = {"url": url}
+                if headers:
+                    sse_kwargs["headers"] = headers
+                
+                c7_transport = await asyncio.wait_for(
+                    self.exit_stack.enter_async_context(
+                        sse_client(**sse_kwargs)
+                    ),
+                    timeout=60.0
+                )
             
             session = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(
@@ -123,7 +140,7 @@ class MCPClientManager:
             print("[OK] Successfully connected to Context7")
             return True
         except asyncio.TimeoutError:
-            error_msg = "Connection timeout (60s) - network issue or server unavailable"
+            error_msg = "Connection timeout (60s) - npx may be slow or network issue"
             print(f"[ERROR] {error_msg}")
             self.connection_errors["context7"] = error_msg
             return False
