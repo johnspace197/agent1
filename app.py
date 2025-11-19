@@ -14,7 +14,7 @@ nest_asyncio.apply()
 st.set_page_config(page_title="Gemini MCP Agent", page_icon="🤖", layout="wide")
 
 async def main():
-    st.title("🤖 Gemini MCP Agent")
+    st.title("🔍 지능형 검색 에이전트")
     st.caption("Powered by Gemini 1.5 Flash, DuckDuckGo, and Context7")
 
     # Initialize Session State
@@ -46,6 +46,20 @@ async def main():
             with st.expander("View Tools"):
                 for tool in st.session_state.mcp_client.tools:
                     st.code(f"{tool['name']} ({tool['server']})")
+            
+            # Search History
+            if st.session_state.agent and hasattr(st.session_state.agent, 'search_history'):
+                history = st.session_state.agent.get_search_history()
+                if history:
+                    st.subheader("📚 Search History")
+                    st.info(f"Total searches: {len(history)}")
+                    with st.expander("View Search History"):
+                        for i, result in enumerate(reversed(history[-10:]), 1):
+                            st.markdown(f"**{i}. {result['source'].upper()}** - `{result['query']}`")
+                            st.caption(f"Time: {result['timestamp']}")
+                    if st.button("Clear History"):
+                        st.session_state.agent.clear_history()
+                        st.rerun()
             
             if st.button("Disconnect"):
                 await st.session_state.mcp_client.cleanup()
