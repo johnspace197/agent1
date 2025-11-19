@@ -168,7 +168,8 @@ Guidelines:
         if history_context:
             enhanced_message = f"{user_message}\n\n{history_context}\n\nNote: Use previous search results if relevant, but also perform new searches if needed."
 
-        response = await self.chat.send_message(enhanced_message)
+        # google-genai SDK의 send_message는 동기 메서드
+        response = self.chat.send_message(enhanced_message)
         
         max_turns = 15
         current_turn = 0
@@ -229,7 +230,8 @@ Guidelines:
                     )
                 )
 
-            response = await self.chat.send_message(parts_response)
+            # google-genai SDK의 send_message는 동기 메서드
+            response = self.chat.send_message(parts_response)
             current_turn += 1
 
         if search_results_this_query:
