@@ -60,25 +60,25 @@ class MCPClientManager:
                 env=os.environ.copy()
             )
             
-            # 타임아웃 설정 (30초)
+            # 타임아웃 설정 (60초로 증가 - npx 설치 시간 고려)
             ddg_transport = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(stdio_client(ddg_params)),
-                timeout=30.0
+                timeout=60.0
             )
             
             session = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(
                     ClientSession(ddg_transport[0], ddg_transport[1])
                 ),
-                timeout=30.0
+                timeout=60.0
             )
             
-            await asyncio.wait_for(session.initialize(), timeout=30.0)
+            await asyncio.wait_for(session.initialize(), timeout=60.0)
             self.sessions["duckduckgo"] = session
             print("[OK] Successfully connected to DuckDuckGo")
             return True
         except asyncio.TimeoutError:
-            error_msg = "Connection timeout (30s) - npx may be slow or network issue"
+            error_msg = "Connection timeout (60s) - npx may be slow or network issue. Try running 'npx -y duckduckgo-mcp-server' manually first."
             print(f"[ERROR] {error_msg}")
             self.connection_errors["duckduckgo"] = error_msg
             return False
@@ -98,27 +98,32 @@ class MCPClientManager:
             url = c7_config.get("url", "https://mcp.context7.com/mcp")
             headers = c7_config.get("headers", {})
             
-            # SSE 클라이언트 연결 (타임아웃 30초)
+            # SSE 클라이언트 연결 (타임아웃 60초로 증가)
+            # headers가 비어있으면 None으로 전달
+            sse_kwargs = {"url": url}
+            if headers:
+                sse_kwargs["headers"] = headers
+            
             c7_transport = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(
-                    sse_client(url, headers=headers if headers else None)
+                    sse_client(**sse_kwargs)
                 ),
-                timeout=30.0
+                timeout=60.0
             )
             
             session = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(
                     ClientSession(c7_transport[0], c7_transport[1])
                 ),
-                timeout=30.0
+                timeout=60.0
             )
             
-            await asyncio.wait_for(session.initialize(), timeout=30.0)
+            await asyncio.wait_for(session.initialize(), timeout=60.0)
             self.sessions["context7"] = session
             print("[OK] Successfully connected to Context7")
             return True
         except asyncio.TimeoutError:
-            error_msg = "Connection timeout (30s) - network issue or server unavailable"
+            error_msg = "Connection timeout (60s) - network issue or server unavailable"
             print(f"[ERROR] {error_msg}")
             self.connection_errors["context7"] = error_msg
             return False
