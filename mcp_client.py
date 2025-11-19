@@ -1,6 +1,8 @@
 import asyncio
 import os
+import json
 import traceback
+from pathlib import Path
 from contextlib import AsyncExitStack
 from typing import Dict, List, Any, Optional
 
@@ -10,20 +12,44 @@ from mcp.client.sse import sse_client
 from mcp.types import CallToolResult, Tool
 
 class MCPClientManager:
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None):
         self.sessions: Dict[str, ClientSession] = {}
         self.exit_stack = AsyncExitStack()
         self.tools: List[Dict[str, Any]] = []
         self._is_connected = False
         self.connection_errors: Dict[str, str] = {}
+        self.config_path = config_path or "agent.mcp.json"
+        self.mcp_config: Dict[str, Any] = {}
+        self._load_config()
+    
+    def _load_config(self):
+        """agent.mcp.json 파일에서 MCP 서버 설정 로드"""
+        try:
+            config_file = Path(self.config_path)
+            if config_file.exists():
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    self.mcp_config = json.load(f)
+                print(f"✅ Loaded MCP config from {self.config_path}")
+            else:
+                print(f"⚠️ Config file {self.config_path} not found, using default settings")
+                self.mcp_config = {}
+        except Exception as e:
+            print(f"❌ Error loading config file: {e}")
+            self.mcp_config = {}
 
     async def _connect_ddg(self):
         """DuckDuckGo MCP 서버 연결 (Stdio)"""
         try:
             print("🔄 Attempting to connect to DuckDuckGo MCP server...")
+            
+            # config에서 설정 읽기
+            ddg_config = self.mcp_config.get("mcpServers", {}).get("duckduckgo-search", {})
+            command = ddg_config.get("command", "npx")
+            args = ddg_config.get("args", ["-y", "duckduckgo-mcp-server"])
+            
             ddg_params = StdioServerParameters(
-                command="npx", 
-                args=["-y", "duckduckgo-mcp-server"],
+                command=command, 
+                args=args,
                 env=os.environ.copy()
             )
             
@@ -59,10 +85,16 @@ class MCPClientManager:
         """Context7 MCP 서버 연결 (SSE)"""
         try:
             print("🔄 Attempting to connect to Context7 MCP server...")
+            
+            # config에서 설정 읽기
+            c7_config = self.mcp_config.get("mcpServers", {}).get("Context7", {})
+            url = c7_config.get("url", "https://mcp.context7.com/mcp")
+            headers = c7_config.get("headers", {})
+            
             # SSE 클라이언트 연결 (타임아웃 30초)
             c7_transport = await asyncio.wait_for(
                 self.exit_stack.enter_async_context(
-                    sse_client("https://mcp.context7.com/mcp")
+                    sse_client(url, headers=headers if headers else None)
                 ),
                 timeout=30.0
             )
