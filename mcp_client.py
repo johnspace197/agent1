@@ -49,8 +49,9 @@ class MCPClientManager:
         try:
             print("[INFO] Attempting to connect to DuckDuckGo MCP server...")
             
-            # config에서 설정 읽기
-            ddg_config = self.mcp_config.get("mcpServers", {}).get("duckduckgo-search", {})
+            # config에서 설정 읽기 - ddg-search 우선, 없으면 duckduckgo-search 사용
+            mcp_servers = self.mcp_config.get("mcpServers", {})
+            ddg_config = mcp_servers.get("ddg-search") or mcp_servers.get("duckduckgo-search", {})
             command = ddg_config.get("command", "npx")
             args = ddg_config.get("args", ["-y", "duckduckgo-mcp-server"])
             
