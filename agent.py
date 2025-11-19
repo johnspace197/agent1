@@ -197,15 +197,19 @@ Guidelines:
                 
                 return response.text
 
-            function_responses = []
-            for fc in function_calls:
+            # 여러 도구를 병렬로 실행하여 속도 향상
+            async def execute_tool(fc):
                 tool_name = fc.name
                 args = fc.args
                 
                 print(f"[INFO] Executing tool: {tool_name} with args: {args}")
                 
                 try:
-                    tool_result = await self.mcp_client.call_tool(tool_name, args)
+                    # 타임아웃 설정 (30초)
+                    tool_result = await asyncio.wait_for(
+                        self.mcp_client.call_tool(tool_name, args),
+                        timeout=30.0
+                    )
                     
                     source = "duckduckgo" if "duckduckgo" in tool_name.lower() else "context7"
                     query = args.get("query", args.get("text", str(args)))
@@ -216,13 +220,32 @@ Guidelines:
                         content=tool_result,
                         metadata={"tool": tool_name, "args": args}
                     )
-                    search_results_this_query.append(search_result)
                     
                     formatted_result = f"[Source: {source.upper()}]\n{tool_result}"
+                    return tool_name, formatted_result, search_result, None
                     
+                except asyncio.TimeoutError:
+                    error_msg = f"Tool {tool_name} execution timeout (30s)"
+                    print(f"[ERROR] {error_msg}")
+                    return tool_name, f"Error: {error_msg}", None, error_msg
                 except Exception as e:
-                    formatted_result = f"Error executing tool {tool_name}: {str(e)}"
+                    error_msg = f"Error executing tool {tool_name}: {str(e)}"
                     print(f"[ERROR] Tool execution error: {e}")
+                    return tool_name, error_msg, None, str(e)
+            
+            # 모든 도구를 병렬로 실행
+            tool_results = await asyncio.gather(*[execute_tool(fc) for fc in function_calls], return_exceptions=True)
+            
+            function_responses = []
+            for result in tool_results:
+                if isinstance(result, Exception):
+                    print(f"[ERROR] Tool execution exception: {result}")
+                    continue
+                
+                tool_name, formatted_result, search_result, error = result
+                
+                if search_result:
+                    search_results_this_query.append(search_result)
                 
                 # FunctionResponse 생성
                 function_responses.append(
