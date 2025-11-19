@@ -36,16 +36,46 @@ async def main():
                         await st.session_state.mcp_client.connect()
                         st.session_state.agent = Agent(st.session_state.mcp_client)
                         st.session_state.connected = True
-                        st.success("✅ Connected!")
+                        
+                        # 연결 상태 표시
+                        connected_servers = list(st.session_state.mcp_client.sessions.keys())
+                        if len(connected_servers) == 2:
+                            st.success("✅ Connected to all servers!")
+                        else:
+                            st.warning(f"⚠️ Connected to: {', '.join(connected_servers)}")
+                            if st.session_state.mcp_client.connection_errors:
+                                with st.expander("Connection Errors"):
+                                    for server, error in st.session_state.mcp_client.connection_errors.items():
+                                        st.error(f"**{server}**: {error}")
+                        
                         st.rerun()
                     except Exception as e:
                         st.error(f"Connection failed: {e}")
+                        if hasattr(st.session_state.mcp_client, 'connection_errors'):
+                            with st.expander("Detailed Error Information"):
+                                for server, error in st.session_state.mcp_client.connection_errors.items():
+                                    st.error(f"**{server}**: {error}")
         else:
-            st.success("🟢 Connected")
+            # 연결된 서버 표시
+            connected_servers = list(st.session_state.mcp_client.sessions.keys())
+            if len(connected_servers) == 2:
+                st.success("🟢 Connected to all servers")
+            else:
+                st.warning(f"⚠️ Connected to: {', '.join(connected_servers)}")
+            
             st.info(f"Loaded Tools: {len(st.session_state.mcp_client.tools)}")
             with st.expander("View Tools"):
-                for tool in st.session_state.mcp_client.tools:
-                    st.code(f"{tool['name']} ({tool['server']})")
+                if st.session_state.mcp_client.tools:
+                    for tool in st.session_state.mcp_client.tools:
+                        st.code(f"{tool['name']} ({tool['server']})")
+                else:
+                    st.warning("No tools available")
+            
+            # 연결 에러가 있으면 표시
+            if hasattr(st.session_state.mcp_client, 'connection_errors') and st.session_state.mcp_client.connection_errors:
+                with st.expander("⚠️ Connection Warnings"):
+                    for server, error in st.session_state.mcp_client.connection_errors.items():
+                        st.error(f"**{server}**: {error}")
             
             # Search History
             if st.session_state.agent and hasattr(st.session_state.agent, 'search_history'):
