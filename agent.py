@@ -46,8 +46,14 @@ class Agent:
         function_declarations = []
         
         for tool in mcp_tools:
-            parameters = tool["parameters"]
-            if parameters.get("type") != "object":
+            parameters = tool["parameters"].copy() if isinstance(tool["parameters"], dict) else tool["parameters"]
+            
+            # Pydantic이 허용하지 않는 필드 제거
+            if isinstance(parameters, dict):
+                parameters.pop("$schema", None)
+                parameters.pop("$id", None)
+            
+            if isinstance(parameters, dict) and parameters.get("type") != "object":
                  parameters = {
                      "type": "object",
                      "properties": {"arg": parameters}
