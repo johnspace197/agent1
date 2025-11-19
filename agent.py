@@ -40,6 +40,23 @@ class Agent:
         else:
             self.client = genai.Client(api_key=api_key)
 
+    def _clean_schema(self, schema: Any) -> Any:
+        """JSON Schema에서 Gemini API가 지원하지 않는 필드 제거"""
+        if isinstance(schema, dict):
+            # 복사본 생성
+            cleaned = {}
+            for key, value in schema.items():
+                # 지원하지 않는 필드 제거
+                if key in ["$schema", "$id", "additionalProperties", "additional_properties"]:
+                    continue
+                # 재귀적으로 정리
+                cleaned[key] = self._clean_schema(value)
+            return cleaned
+        elif isinstance(schema, list):
+            return [self._clean_schema(item) for item in schema]
+        else:
+            return schema
+
     def _get_tools(self):
         """Convert MCP tools to google-genai Tool objects"""
         mcp_tools = self.mcp_client.get_tools_for_gemini()
@@ -48,10 +65,9 @@ class Agent:
         for tool in mcp_tools:
             parameters = tool["parameters"].copy() if isinstance(tool["parameters"], dict) else tool["parameters"]
             
-            # Pydantic이 허용하지 않는 필드 제거
+            # Gemini API가 지원하지 않는 필드 제거 (재귀적으로)
             if isinstance(parameters, dict):
-                parameters.pop("$schema", None)
-                parameters.pop("$id", None)
+                parameters = self._clean_schema(parameters)
             
             if isinstance(parameters, dict) and parameters.get("type") != "object":
                  parameters = {
