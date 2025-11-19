@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+mcp
+python-dotenv
+nest_asyncio
+httpx
+sse-starlette
+
