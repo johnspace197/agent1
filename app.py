@@ -15,7 +15,7 @@ st.set_page_config(page_title="Gemini MCP Agent", page_icon="🤖", layout="wide
 
 async def main():
     st.title("🔍 지능형 검색 에이전트")
-    st.caption("Powered by Gemini 1.5 Flash, DuckDuckGo, and Context7")
+    st.caption("Powered by Gemini 2.5 Pro, DuckDuckGo, and Context7")
 
     # Initialize Session State
     if "mcp_client" not in st.session_state:
