@@ -255,13 +255,14 @@ Guidelines:
                     )
                 )
 
-            # FunctionResponse를 Content로 변환하여 전송
-            function_response_content = types.Content(
-                parts=[types.Part(function_response=fr) for fr in function_responses]
-            )
+            # FunctionResponse를 Part 리스트로 변환하여 전송
+            function_response_parts = [
+                types.Part(function_response=fr) for fr in function_responses
+            ]
             
             # google-genai SDK의 send_message는 동기 메서드
-            response = self.chat.send_message(function_response_content)
+            # Part 리스트를 직접 전달
+            response = self.chat.send_message(function_response_parts)
             current_turn += 1
 
         if search_results_this_query:
