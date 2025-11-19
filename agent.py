@@ -179,7 +179,7 @@ Guidelines:
                 tool_name = fc.name
                 args = fc.args
                 
-                print(f"🔍 Executing tool: {tool_name} with args: {args}")
+                print(f"[INFO] Executing tool: {tool_name} with args: {args}")
                 
                 try:
                     tool_result = await self.mcp_client.call_tool(tool_name, args)

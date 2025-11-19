@@ -1,10 +1,17 @@
 import asyncio
 import os
+import sys
 import json
 import traceback
 from pathlib import Path
 from contextlib import AsyncExitStack
 from typing import Dict, List, Any, Optional
+
+# Windows 인코딩 문제 해결
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -29,18 +36,18 @@ class MCPClientManager:
             if config_file.exists():
                 with open(config_file, 'r', encoding='utf-8') as f:
                     self.mcp_config = json.load(f)
-                print(f"✅ Loaded MCP config from {self.config_path}")
+                print(f"[OK] Loaded MCP config from {self.config_path}")
             else:
-                print(f"⚠️ Config file {self.config_path} not found, using default settings")
+                print(f"[WARN] Config file {self.config_path} not found, using default settings")
                 self.mcp_config = {}
         except Exception as e:
-            print(f"❌ Error loading config file: {e}")
+            print(f"[ERROR] Error loading config file: {e}")
             self.mcp_config = {}
 
     async def _connect_ddg(self):
         """DuckDuckGo MCP 서버 연결 (Stdio)"""
         try:
-            print("🔄 Attempting to connect to DuckDuckGo MCP server...")
+            print("[INFO] Attempting to connect to DuckDuckGo MCP server...")
             
             # config에서 설정 읽기
             ddg_config = self.mcp_config.get("mcpServers", {}).get("duckduckgo-search", {})
@@ -68,23 +75,23 @@ class MCPClientManager:
             
             await asyncio.wait_for(session.initialize(), timeout=30.0)
             self.sessions["duckduckgo"] = session
-            print("✅ Successfully connected to DuckDuckGo")
+            print("[OK] Successfully connected to DuckDuckGo")
             return True
         except asyncio.TimeoutError:
             error_msg = "Connection timeout (30s) - npx may be slow or network issue"
-            print(f"❌ {error_msg}")
+            print(f"[ERROR] {error_msg}")
             self.connection_errors["duckduckgo"] = error_msg
             return False
         except Exception as e:
             error_msg = f"Connection failed: {str(e)}\n{traceback.format_exc()}"
-            print(f"❌ DuckDuckGo connection error: {error_msg}")
+            print(f"[ERROR] DuckDuckGo connection error: {error_msg}")
             self.connection_errors["duckduckgo"] = error_msg
             return False
 
     async def _connect_context7(self):
         """Context7 MCP 서버 연결 (SSE)"""
         try:
-            print("🔄 Attempting to connect to Context7 MCP server...")
+            print("[INFO] Attempting to connect to Context7 MCP server...")
             
             # config에서 설정 읽기
             c7_config = self.mcp_config.get("mcpServers", {}).get("Context7", {})
@@ -108,16 +115,16 @@ class MCPClientManager:
             
             await asyncio.wait_for(session.initialize(), timeout=30.0)
             self.sessions["context7"] = session
-            print("✅ Successfully connected to Context7")
+            print("[OK] Successfully connected to Context7")
             return True
         except asyncio.TimeoutError:
             error_msg = "Connection timeout (30s) - network issue or server unavailable"
-            print(f"❌ {error_msg}")
+            print(f"[ERROR] {error_msg}")
             self.connection_errors["context7"] = error_msg
             return False
         except Exception as e:
             error_msg = f"Connection failed: {str(e)}\n{traceback.format_exc()}"
-            print(f"❌ Context7 connection error: {error_msg}")
+            print(f"[ERROR] Context7 connection error: {error_msg}")
             self.connection_errors["context7"] = error_msg
             return False
 
@@ -149,13 +156,13 @@ class MCPClientManager:
         # 연결 상태 확인
         if ddg_connected and c7_connected:
             self._is_connected = True
-            print("✅ Connected to all MCP servers")
+            print("[OK] Connected to all MCP servers")
         elif ddg_connected:
             self._is_connected = True
-            print("⚠️ Connected to DuckDuckGo only (Context7 failed)")
+            print("[WARN] Connected to DuckDuckGo only (Context7 failed)")
         elif c7_connected:
             self._is_connected = True
-            print("⚠️ Connected to Context7 only (DuckDuckGo failed)")
+            print("[WARN] Connected to Context7 only (DuckDuckGo failed)")
 
     async def refresh_tools(self):
         self.tools = []
