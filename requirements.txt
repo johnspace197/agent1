@@ -1,8 +1,7 @@
 streamlit
-google-generativeai
+google-genai
 mcp
 python-dotenv
 nest_asyncio
 httpx
 sse-starlette
-
