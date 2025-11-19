@@ -130,8 +130,9 @@ class MCPClientManager:
         try:
             print("[INFO] Attempting to connect to Context7 MCP server...")
             
-            # config에서 설정 읽기
-            c7_config = self.mcp_config.get("mcpServers", {}).get("Context7", {})
+            # config에서 설정 읽기 (대소문자 구분 없이 시도)
+            mcp_servers = self.mcp_config.get("mcpServers", {})
+            c7_config = mcp_servers.get("context7") or mcp_servers.get("Context7", {})
             
             # command가 있으면 stdio 방식, url이 있으면 SSE 방식
             if "command" in c7_config:
