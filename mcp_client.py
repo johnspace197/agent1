@@ -46,48 +46,84 @@ class MCPClientManager:
 
     async def _connect_ddg(self):
         """DuckDuckGo MCP 서버 연결 (Stdio)"""
-        try:
-            print("[INFO] Attempting to connect to DuckDuckGo MCP server...")
-            
-            # config에서 설정 읽기 - ddg-search 우선, 없으면 duckduckgo-search 사용
-            mcp_servers = self.mcp_config.get("mcpServers", {})
-            ddg_config = mcp_servers.get("ddg-search") or mcp_servers.get("duckduckgo-search", {})
-            command = ddg_config.get("command", "npx")
-            args = ddg_config.get("args", ["-y", "duckduckgo-mcp-server"])
-            
-            ddg_params = StdioServerParameters(
-                command=command, 
-                args=args,
-                env=os.environ.copy()
-            )
-            
-            # 타임아웃 설정 (60초로 증가 - npx 설치 시간 고려)
-            ddg_transport = await asyncio.wait_for(
-                self.exit_stack.enter_async_context(stdio_client(ddg_params)),
-                timeout=60.0
-            )
-            
-            session = await asyncio.wait_for(
-                self.exit_stack.enter_async_context(
-                    ClientSession(ddg_transport[0], ddg_transport[1])
-                ),
-                timeout=60.0
-            )
-            
-            await asyncio.wait_for(session.initialize(), timeout=60.0)
-            self.sessions["duckduckgo"] = session
-            print("[OK] Successfully connected to DuckDuckGo")
-            return True
-        except asyncio.TimeoutError:
-            error_msg = "Connection timeout (60s) - npx may be slow or network issue. Try running 'npx -y duckduckgo-mcp-server' manually first."
-            print(f"[ERROR] {error_msg}")
-            self.connection_errors["duckduckgo"] = error_msg
-            return False
-        except Exception as e:
-            error_msg = f"Connection failed: {str(e)}\n{traceback.format_exc()}"
-            print(f"[ERROR] DuckDuckGo connection error: {error_msg}")
-            self.connection_errors["duckduckgo"] = error_msg
-            return False
+        mcp_servers = self.mcp_config.get("mcpServers", {})
+        
+        # ddg-search와 duckduckgo-search 설정 모두 가져오기
+        ddg_search_config = mcp_servers.get("ddg-search")
+        duckduckgo_search_config = mcp_servers.get("duckduckgo-search", {})
+        
+        # 시도할 설정 목록 (ddg-search 우선)
+        configs_to_try = []
+        if ddg_search_config:
+            configs_to_try.append(("ddg-search", ddg_search_config))
+        if duckduckgo_search_config:
+            configs_to_try.append(("duckduckgo-search", duckduckgo_search_config))
+        
+        # 기본 설정
+        if not configs_to_try:
+            configs_to_try.append(("default", {"command": "npx", "args": ["-y", "duckduckgo-mcp-server"]}))
+        
+        # 각 설정을 순차적으로 시도
+        for config_name, ddg_config in configs_to_try:
+            try:
+                print(f"[INFO] Attempting to connect to DuckDuckGo MCP server using {config_name}...")
+                
+                command = ddg_config.get("command", "npx")
+                args = ddg_config.get("args", ["-y", "duckduckgo-mcp-server"])
+                
+                ddg_params = StdioServerParameters(
+                    command=command, 
+                    args=args,
+                    env=os.environ.copy()
+                )
+                
+                # 타임아웃 설정 (60초로 증가 - npx 설치 시간 고려)
+                ddg_transport = await asyncio.wait_for(
+                    self.exit_stack.enter_async_context(stdio_client(ddg_params)),
+                    timeout=60.0
+                )
+                
+                session = await asyncio.wait_for(
+                    self.exit_stack.enter_async_context(
+                        ClientSession(ddg_transport[0], ddg_transport[1])
+                    ),
+                    timeout=60.0
+                )
+                
+                await asyncio.wait_for(session.initialize(), timeout=60.0)
+                self.sessions["duckduckgo"] = session
+                print(f"[OK] Successfully connected to DuckDuckGo using {config_name}")
+                return True
+            except FileNotFoundError:
+                # 명령어를 찾을 수 없으면 다음 설정 시도
+                print(f"[WARN] Command '{command}' not found, trying next configuration...")
+                if config_name == configs_to_try[-1][0]:
+                    # 마지막 설정도 실패하면 에러
+                    error_msg = f"All DuckDuckGo configurations failed. Last error: Command '{command}' not found. Please install '{command}' or check PATH."
+                    print(f"[ERROR] {error_msg}")
+                    self.connection_errors["duckduckgo"] = error_msg
+                    return False
+                continue
+            except asyncio.TimeoutError:
+                # 타임아웃이면 다음 설정 시도
+                print(f"[WARN] Connection timeout with {config_name}, trying next configuration...")
+                if config_name == configs_to_try[-1][0]:
+                    error_msg = "Connection timeout (60s) - all configurations failed. Try running the command manually first."
+                    print(f"[ERROR] {error_msg}")
+                    self.connection_errors["duckduckgo"] = error_msg
+                    return False
+                continue
+            except Exception as e:
+                # 다른 에러면 다음 설정 시도
+                print(f"[WARN] Connection failed with {config_name}: {str(e)}, trying next configuration...")
+                if config_name == configs_to_try[-1][0]:
+                    error_msg = f"All DuckDuckGo configurations failed. Last error: {str(e)}"
+                    print(f"[ERROR] DuckDuckGo connection error: {error_msg}")
+                    self.connection_errors["duckduckgo"] = error_msg
+                    return False
+                continue
+        
+        return False
 
     async def _connect_context7(self):
         """Context7 MCP 서버 연결 (Stdio 또는 SSE)"""
