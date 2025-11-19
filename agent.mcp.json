@@ -7,6 +7,14 @@
           "@upstash/context7-mcp"
         ]
       },
+      "duckduckgo-search": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-duckduckgo"
+        ],
+        "env": {}
+      },
       "ddg-search": {
         "command": "uvx",
         "args": ["duckduckgo-mcp-server"]

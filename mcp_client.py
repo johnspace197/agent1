@@ -48,16 +48,16 @@ class MCPClientManager:
         """DuckDuckGo MCP 서버 연결 (Stdio)"""
         mcp_servers = self.mcp_config.get("mcpServers", {})
         
-        # ddg-search와 duckduckgo-search 설정 모두 가져오기
-        ddg_search_config = mcp_servers.get("ddg-search")
+        # duckduckgo-search와 ddg-search 설정 모두 가져오기
         duckduckgo_search_config = mcp_servers.get("duckduckgo-search", {})
+        ddg_search_config = mcp_servers.get("ddg-search")
         
-        # 시도할 설정 목록 (ddg-search 우선)
+        # 시도할 설정 목록 (duckduckgo-search 우선)
         configs_to_try = []
-        if ddg_search_config:
-            configs_to_try.append(("ddg-search", ddg_search_config))
         if duckduckgo_search_config:
             configs_to_try.append(("duckduckgo-search", duckduckgo_search_config))
+        if ddg_search_config:
+            configs_to_try.append(("ddg-search", ddg_search_config))
         
         # 기본 설정
         if not configs_to_try:
